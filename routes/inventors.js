@@ -1,35 +1,59 @@
 const express = require('express');
+const expressJwt = require('express-jwt');
 const router = express.Router();
-const dataInventor = require('../data/Inventor');
+const dataInventors = require('./../data/inventor');
 
-/* Listado de todos los inventores */
-router.get('/', async function(req, res) {
-  const data = await dataInventor.getAllInventors();
-  res.json(data);
+
+const secret = ({secret: 'secret', algorithms: ['HS256']});
+
+//Key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWV9.TJVA95OrM7E2cBab30RMHrHDcEfxjoYZgeFONFh7HgQ
+
+// listado de todos los inventors
+// http://localhost:3000/api/inventors/
+router.get('/', expressJwt(secret), async (req, res) =>{
+    if(req.user.admin){
+        res.json(await dataInventors.getAllInventors());
+    }
+    res.status(401).send({message: 'no autorizado'});
 });
 
-/* Un inventor especifico */
-router.get('/:id', async (req, res) => {
-    // res.json el estatus es 200 por defecto
-    res.json(await dataInventor.getInventor(req.params.id));
+
+// http://localhost:3000/api/inventors/8
+router.get('/:id', expressJwt(secret), async (req, res) =>{
+    if(req.user.admin){    
+        res.json(await dataInventors.getInventor(req.params.id));
+    }
+    res.status(401).send({message: 'no autorizado'});    
 });
 
-// Alta de inventor
-router.post('/', async (req, res) =>{
-    const inventor = req.body;
-    await dataInventor.pushInventor(inventor);
-    const inventorPersistido = await dataInventor.getInventor(inventor._id);
-    res.json(inventorPersistido);
+router.post('/', expressJwt(secret), async (req, res) => {
+    if(req.user.admin){    
+        const inventor = req.body;
+        await dataInventors.pushInventor(inventor);
+        const inventorPersistido = await dataInventors.getInventor(inventor._id); 
+        res.json(inventorPersistido);
+    }
+    res.status(401).send({message: 'no autorizado'});       
 });
 
-// Modificacion de inventor
-router.put('/:id', (req, res) =>{
+router.put('/:id', expressJwt(secret), async (req, res) =>{
+    if(req.user.admin){ 
+        const inventor = req.body;
+        inventor._id = req.params.id;
+        await dataInventors.updateInventor(inventor);
 
+        res.json(await dataInventors.getInventor(req.params.id));
+    }
+    res.status(401).send({message: 'no autorizado'}); 
 });
 
-// Eliminacion de inventor
-router.delete('/:id', (req, res)=>{
-
+router.delete('/:id', expressJwt(secret), async (req,res) => {
+    if(req.user.admin){ 
+        console.log('Delete');
+        await dataInventors.deleteInventor(req.params.id);
+        res.send('Inventor eliminado');
+    }
+    res.status(401).send({message: 'no autorizado'}); 
 });
 
 module.exports = router;
